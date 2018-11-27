@@ -98,40 +98,57 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func myHandler2(w http.ResponseWriter, r *http.Request) {
+
+	tmpl := template.Must(template.ParseFiles("forms2.html"))
+
+	if r.Method != http.MethodPost {
+		tmpl.Execute(w, nil)
+		return
+	}
+
+	details := MealDetails{
+		Name:   r.FormValue("name"),
+		Subject: r.FormValue("subject"),
+		Message: r.FormValue("message"),
+	}
+
+	// do something with details
+	_ = details
+	log.Println(details.Name)
+		jsonData := map[string]string{"query": details.Name}
+	jsonValue, _ := json.Marshal(jsonData)
+	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("x-app-id", "40523543")
+	request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
+	request.Header.Set("x-remote-user-id", "0")
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatal("The HTTP request failed with error %s\n", err)
+		z:= Responser{err.Error(),false}
+		tmpl.Execute(w, z)
+	} else {
+		data, _ := ioutil.ReadAll(response.Body)
+		log.Println(string(data))
+		z:= Responser{string(data),true}
+		tmpl.Execute(w, z)
+	}
+
+	
+	// t, _:= template.ParseFiles("forms.html")
+	// t.Execute(w, "Hello World!")
+
+}
 
 
-// func myCachedHandler(w http.ResponseWriter, r *http.Request) {
-// 	n, err := cache.Get("n").Result()
-
-// 	if err == redis.Nil {
-// 		n = strconv.Itoa(rand.Intn(100))
-// 		cache.Set("n", n, 5*time.Second)
-// 	}
-
-// 	fmt.Fprintf(w, "n = %s\n", n)
-// }
 
 func main() {
-	// dbInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-	// 	dbHost, dbPort, dbUser, dbPassword, dbName)
-	// var err error
-	// db, err = sql.Open("postgres", dbInfo)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if err = db.Ping(); err != nil {
-	// 	log.Fatal(err)
-	// }
 
-	// cache = redis.NewClient(&redis.Options{
-	// 	Addr: cacheHost + ":" + cachePort,
-	// })
-	// if _, err := cache.Ping().Result(); err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	http.HandleFunc("/", myHandler)
-//	http.HandleFunc("/cache", myCachedHandler)
+	http.HandleFunc("/exercise", myHandler2)
 	log.Print("Listening on " + webHost + ":" + webPort + "...")
 	http.ListenAndServe(webHost+":"+webPort, nil)
 }
