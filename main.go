@@ -52,6 +52,20 @@ type Responser struct {
 	Success  bool
 }
 
+type signUp struct {
+	Email    string
+	Password string
+	Username string
+	Height   float64
+	Age      float64
+	Gender   string
+}
+
+type logIn struct {
+	Email    string
+	Password string
+}
+
 func envOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
