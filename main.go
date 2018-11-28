@@ -3,16 +3,19 @@ package main
 import (
 	"database/sql"
 	"html/template"
+
 	// "fmt"
 	"log"
 	// "math/rand"
 	"net/http"
 	"os"
+
 	// "strconv"
 	// "time"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
+
 	"github.com/go-redis/redis"
 	_ "github.com/lib/pq"
 )
@@ -33,21 +36,20 @@ var (
 	db    *sql.DB
 	cache *redis.Client
 )
-type Gopher struct{
+
+type Gopher struct {
 	Name string
 }
 type MealDetails struct {
-	Name  string
+	Name string
 }
 type ExDetails struct {
-	Name  string
+	Name string
 	Age  string
-
 }
 type Responser struct {
 	Response string
-	Success bool
-
+	Success  bool
 }
 
 func envOrDefault(key, defaultValue string) string {
@@ -67,16 +69,16 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details := MealDetails{
-		Name:   r.FormValue("name"),
+		Name: r.FormValue("name"),
 	}
 	exdetails := ExDetails{
-		Name:   r.FormValue("name"),
-		Age: r.FormValue("age"),
+		Name: r.FormValue("name"),
+		Age:  r.FormValue("age"),
 	}
 	// do something with details
 	_ = details
 	log.Println(details.Name)
-	jsonData := map[string]string{"query": exdetails.Name , "age":exdetails.Age}
+	jsonData := map[string]string{"query": exdetails.Name, "age": exdetails.Age}
 	jsonValue, _ := json.Marshal(jsonData)
 	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
 	request.Header.Set("Content-Type", "application/json")
@@ -87,16 +89,15 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Do(request)
 	if err != nil {
 		log.Fatal("The HTTP request failed with error %s\n", err)
-		z:= Responser{err.Error(),false}
+		z := Responser{err.Error(), false}
 		tmpl.Execute(w, z)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
 		log.Println(string(data))
-		z:= Responser{string(data),true}
+		z := Responser{string(data), true}
 		tmpl.Execute(w, z)
 	}
 
-	
 	// t, _:= template.ParseFiles("forms.html")
 	// t.Execute(w, "Hello World!")
 
@@ -112,13 +113,13 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details := MealDetails{
-		Name:   r.FormValue("name"),
+		Name: r.FormValue("name"),
 	}
 
 	// do something with details
 	_ = details
 	log.Println(details.Name)
-		jsonData := map[string]string{"query": details.Name}
+	jsonData := map[string]string{"query": details.Name}
 	jsonValue, _ := json.Marshal(jsonData)
 	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
 	request.Header.Set("Content-Type", "application/json")
@@ -129,21 +130,19 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Do(request)
 	if err != nil {
 		log.Fatal("The HTTP request failed with error %s\n", err)
-		z:= Responser{err.Error(),false}
+		z := Responser{err.Error(), false}
 		tmpl.Execute(w, z)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
 		log.Println(string(data))
-		z:= Responser{string(data),true}
+		z := Responser{string(data), true}
 		tmpl.Execute(w, z)
 	}
 
-	
 	// t, _:= template.ParseFiles("forms.html")
 	// t.Execute(w, "Hello World!")
 
 }
-
 
 func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
 
@@ -153,37 +152,6 @@ func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
 		tmpl.Execute(w, nil)
 		return
 	}
-
-	// details := MealDetails{
-	// 	Name:   r.FormValue("name"),
-	// }
-
-	// // do something with details
-	// _ = details
-	// log.Println(details.Name)
-	// 	jsonData := map[string]string{"query": details.Name}
-	// jsonValue, _ := json.Marshal(jsonData)
-	// request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
-	// request.Header.Set("Content-Type", "application/json")
-	// request.Header.Set("x-app-id", "40523543")
-	// request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
-	// request.Header.Set("x-remote-user-id", "0")
-	// client := &http.Client{}
-	// response, err := client.Do(request)
-	// if err != nil {
-	// 	log.Fatal("The HTTP request failed with error %s\n", err)
-	// 	z:= Responser{err.Error(),false}
-	// 	tmpl.Execute(w, z)
-	// } else {
-	// 	data, _ := ioutil.ReadAll(response.Body)
-	// 	log.Println(string(data))
-	// 	z:= Responser{string(data),true}
-	// 	tmpl.Execute(w, z)
-	// }
-
-	
-	// t, _:= template.ParseFiles("forms.html")
-	// t.Execute(w, "Hello World!")
 
 }
 

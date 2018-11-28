@@ -57,11 +57,11 @@
 			"revisionTime": "2018-03-27T07:18:24Z"
 		},
 		{
-			"checksumSHA1": "ATnwV0POluBNQEMjPdylodz0oK0=",
+			"checksumSHA1": "AU3fA8Sm33Vj9PBoRPSeYfxLRuE=",
 			"path": "github.com/lib/pq/oid",
 			"revision": "d34b9ff171c21ad295489235aec8b6626023cd04",
 			"revisionTime": "2018-03-27T07:18:24Z"
 		}
 	],
-	"rootPath": "myapp"
+	"rootPath": "NutritionAppGOLANG"
 }
