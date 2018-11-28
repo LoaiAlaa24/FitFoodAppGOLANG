@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"html/template"
 
 	// "fmt"
@@ -16,7 +15,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/go-redis/redis"
 	_ "github.com/lib/pq"
 )
 
@@ -33,8 +31,8 @@ var (
 	webHost = envOrDefault("MYAPP_WEB_HOST", "")
 	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
 
-	db    *sql.DB
-	cache *redis.Client
+	// db    *sql.DB
+	// cache *redis.Client
 )
 
 type Gopher struct {
@@ -112,9 +110,6 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 		tmpl.Execute(w, z)
 	}
 
-	// t, _:= template.ParseFiles("forms.html")
-	// t.Execute(w, "Hello World!")
-
 }
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
@@ -169,8 +164,25 @@ func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func myHandlerSignup(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func myHandlerLogin(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.Must(template.ParseFiles("login.html"))
+
+	if r.Method != http.MethodPost {
+		tmpl.Execute(w, nil)
+		return
+	}
+}
+
 func main() {
-	http.HandleFunc("/", myHandlerMenu)
+	db, err :=
+
+		//http.HandleFunc("/", myHandlerMenu)
+		http.HandleFunc("/menu", myHandlerMenu)
+	http.HandleFunc("/", myHandlerLogin)
 	http.HandleFunc("/meal", myHandler)
 	http.HandleFunc("/exercise", myHandler2)
 	log.Print("Listening on " + webHost + ":" + webPort + "...")
