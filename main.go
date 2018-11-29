@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"strconv"
 
 	// "fmt"
 	"log"
@@ -49,13 +50,11 @@ type user struct {
 	Email    string  `json:"email" bson:"email"`
 	Password string  `json:"password" bson:"password"`
 	Height   float64 `json:"height" bson:"height"`
+	Weight   float64 `json:"weight" bson:"weight"`
 	Age      float64 `json:"age" bson:"age"`
 	Gender   string  `json:"gender" bson:"gender"`
 }
 
-type Gopher struct {
-	Name string
-}
 type MealDetails struct {
 	Name string
 }
@@ -107,7 +106,21 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	return nil
 }
 
-func (m *mongoDbdatastore) GetUser(username string) (user, error) {
+func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	userCollection := session.DB("FitFood").C("Users")
+	u := user{}
+	err := userCollection.Find(bson.M{"email": email}).One(&u)
+	if err != nil {
+		return user{}, err
+	}
+	return u, nil
+
+}
+
+func (m *mongoDbdatastore) getUserUsername(username string) (user, error) {
 
 	session := m.Copy()
 	defer session.Close()
@@ -209,9 +222,6 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 		tmpl.Execute(w, z)
 	}
 
-	// t, _:= template.ParseFiles("forms.html")
-	// t.Execute(w, "Hello World!")
-
 }
 
 func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
@@ -225,41 +235,114 @@ func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func myHandlerSignup(w http.ResponseWriter, r *http.Request) {
+func myHandlerLogin(e *mongoDbdatastore) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		tmpl := template.Must(template.ParseFiles("login.html"))
+
+		if r.Method != http.MethodPost {
+			tmpl.Execute(w, nil)
+			return
+		}
+
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+
+		user, err := e.getUserEmail(email)
+		if err != nil {
+			log.Fatal(err)
+			fmt.Println("user was not found")
+
+		} else {
+			if user.Password == password {
+
+				tmpl := template.Must(template.ParseFiles("menu.html"))
+				tmpl.Execute(w, nil)
+				fmt.Println("Login in successfully !!")
+				return
+
+			} else {
+				fmt.Println("incorrect password")
+			}
+		}
+
+	})
 }
 
-func myHandlerLogin(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("login.html"))
+func myHandlerSigning(e *mongoDbdatastore) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != http.MethodPost {
-		tmpl.Execute(w, nil)
-		return
-	}
+		tmpl := template.Must(template.ParseFiles("signUp.html"))
+
+		if r.Method != http.MethodPost {
+			tmpl.Execute(w, nil)
+			return
+		}
+
+		weight, _ := strconv.ParseFloat(r.FormValue("weight"), 64)
+		height, _ := strconv.ParseFloat(r.FormValue("height"), 64)
+		age, _ := strconv.ParseFloat(r.FormValue("age"), 64)
+
+		u := user{r.FormValue("username"), r.FormValue("email"), r.FormValue("password"),
+			height, weight, age, r.FormValue("gender")}
+
+		user, err := e.getUserEmail(u.Email)
+
+		if err != nil {
+			_, err := e.getUserUsername(u.Username)
+			if err != nil {
+				e.CreateUser(u)
+
+				tmpl := template.Must(template.ParseFiles("menu.html"))
+				tmpl.Execute(w, nil)
+				fmt.Println("Login in successfully !!")
+				fmt.Println("user added")
+				return
+
+			} else {
+				fmt.Println("username already exists")
+			}
+
+		} else {
+			if user.Email == u.Email {
+				fmt.Println("email already exists")
+			}
+
+		}
+
+	})
+
 }
 
 func main() {
 
 	db, err := createNewDb(dbHost + ":27017")
+	//db, err := createNewDb("localhost:27017")
 	if err != nil {
-		fmt.Println("weselna hena")
+		fmt.Println("error")
 		log.Fatal(err)
-	} else {
-		u := user{"marwanihab", "marwanihab95@gmail.com", "123456", 50, 160, "male"}
-
-		db.CreateUser(u)
-		user, err := db.GetUser("marwanihab")
-
-		if err != nil {
-			log.Fatal(err)
-			fmt.Println("user was not found")
-		}
-
-		fmt.Println(user.Username)
 	}
+	//else {
+	// 	u := user{"marwanihab", "marwanihab95@gmail.com", "123456", 70, 50, 160, "male"}
+
+	// 	db.CreateUser(u)
+	// 	// user, err := db.GetUser("marwanihab")
+
+	// 	// if err != nil {
+	// 	// 	log.Fatal(err)
+	// 	// 	fmt.Println("user was not found")
+	// 	// }
+
+	// 	//fmt.Println("success")
+	// }
+
+	login := myHandlerLogin(db)
+	signUp := myHandlerSigning(db)
+
 	//http.HandleFunc("/", myHandlerMenu)
 	http.HandleFunc("/menu", myHandlerMenu)
-	http.HandleFunc("/", myHandlerLogin)
+	http.Handle("/", login)
+	http.Handle("/signUp", signUp)
 	http.HandleFunc("/meal", myHandler)
 	http.HandleFunc("/exercise", myHandler2)
 	log.Print("Listening on " + webHost + ":" + webPort + "...")
