@@ -18,13 +18,5 @@ RUN govendor sync
 # Build the app
 RUN govendor build -o /go/src/app/myapp
 
-#------------------------------------------------#
-
-# Smallest container image
-FROM alpine
-
-# Copy built executable from base image to here
-COPY --from=builder /go/src/app/myapp /
-
 # Run the app
-CMD [ "/myapp" ]
+CMD [ "/go/src/app/myapp" ]

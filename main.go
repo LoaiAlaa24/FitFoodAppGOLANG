@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 
 	// "fmt"
@@ -18,7 +19,6 @@ import (
 	_ "github.com/lib/pq"
 
 	mgo "gopkg.in/mgo.v2"
-	
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -38,6 +38,20 @@ var (
 	// db    *sql.DB
 	// cache *redis.Client
 )
+
+type mongoDbdatastore struct {
+	*mgo.Session
+}
+
+type user struct {
+	//UUID     string  `json:"uuid" bson:"uuid"`
+	Username string  `json:"username" bson:"username"`
+	Email    string  `json:"email" bson:"email"`
+	Password string  `json:"password" bson:"password"`
+	Height   float64 `json:"height" bson:"height"`
+	Age      float64 `json:"age" bson:"age"`
+	Gender   string  `json:"gender" bson:"gender"`
+}
 
 type Gopher struct {
 	Name string
@@ -66,6 +80,49 @@ type signUp struct {
 type logIn struct {
 	Email    string
 	Password string
+}
+
+func createNewDb(url string) (*mongoDbdatastore, error) {
+
+	session, err := mgo.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	return &mongoDbdatastore{
+		Session: session,
+	}, nil
+}
+
+func (m *mongoDbdatastore) CreateUser(user user) error {
+
+	session := m.Copy()
+
+	defer session.Close()
+	userCollection := session.DB("FitFood").C("Users")
+	err := userCollection.Insert(&user)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *mongoDbdatastore) GetUser(username string) (user, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	userCollection := session.DB("FitFood").C("Users")
+	u := user{}
+	err := userCollection.Find(bson.M{"username": username}).One(&u)
+	if err != nil {
+		return user{}, err
+	}
+	return u, nil
+
+}
+
+func (m *mongoDbdatastore) Close() {
+	m.Close()
 }
 
 func envOrDefault(key, defaultValue string) string {
@@ -182,10 +239,26 @@ func myHandlerLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err :=
 
-		//http.HandleFunc("/", myHandlerMenu)
-		http.HandleFunc("/menu", myHandlerMenu)
+	db, err := createNewDb(dbHost + ":27017")
+	if err != nil {
+		fmt.Println("weselna hena")
+		log.Fatal(err)
+	} else {
+		u := user{"marwanihab", "marwanihab95@gmail.com", "123456", 50, 160, "male"}
+
+		db.CreateUser(u)
+		user, err := db.GetUser("marwanihab")
+
+		if err != nil {
+			log.Fatal(err)
+			fmt.Println("user was not found")
+		}
+
+		fmt.Println(user.Username)
+	}
+	//http.HandleFunc("/", myHandlerMenu)
+	http.HandleFunc("/menu", myHandlerMenu)
 	http.HandleFunc("/", myHandlerLogin)
 	http.HandleFunc("/meal", myHandler)
 	http.HandleFunc("/exercise", myHandler2)
