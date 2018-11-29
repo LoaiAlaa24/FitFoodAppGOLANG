@@ -16,6 +16,10 @@ import (
 	"io/ioutil"
 
 	_ "github.com/lib/pq"
+
+	mgo "gopkg.in/mgo.v2"
+	
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
