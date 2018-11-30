@@ -317,7 +317,7 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 func main() {
 
 	db, err := createNewDb(dbHost + ":27017")
-	//db, err := createNewDb("localhost:27017")
+	//db, err := createNewDb("localhost:2000")
 	if err != nil {
 		fmt.Println("error")
 		log.Fatal(err)
