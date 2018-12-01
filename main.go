@@ -19,11 +19,16 @@ import (
 
 	_ "github.com/lib/pq"
 
+
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
+
 var (
+	uHeight float64
+	uWeight float64
+	uAge float64
 	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
 	dbPort     = envOrDefault("MYAPP_DATABASE_PORT", "5432")
 	dbUser     = envOrDefault("MYAPP_DATABASE_USER", "root")
@@ -42,6 +47,10 @@ var (
 
 type mongoDbdatastore struct {
 	*mgo.Session
+}
+func FloatToString(input_num float64) string {
+    // to convert a float number to a string
+    return strconv.FormatFloat(input_num, 'f', 6, 64)
 }
 
 type user struct {
@@ -91,7 +100,6 @@ func createNewDb(url string) (*mongoDbdatastore, error) {
 		Session: session,
 	}, nil
 }
-
 func (m *mongoDbdatastore) CreateUser(user user) error {
 
 	session := m.Copy()
@@ -106,6 +114,7 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	return nil
 }
 
+
 func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 
 	session := m.Copy()
@@ -114,8 +123,10 @@ func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 	u := user{}
 	err := userCollection.Find(bson.M{"email": email}).One(&u)
 	if err != nil {
+		
 		return user{}, err
 	}
+	log.Println(u)
 	return u, nil
 
 }
@@ -159,12 +170,11 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	}
 	exdetails := ExDetails{
 		Name: r.FormValue("name"),
-		Age:  r.FormValue("age"),
 	}
 	// do something with details
 	_ = details
 	log.Println(details.Name)
-	jsonData := map[string]string{"query": exdetails.Name, "age": exdetails.Age}
+	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge)}
 	jsonValue, _ := json.Marshal(jsonData)
 	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
 	request.Header.Set("Content-Type", "application/json")
@@ -258,6 +268,9 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 
 				tmpl := template.Must(template.ParseFiles("menu.html"))
 				tmpl.Execute(w, nil)
+				uHeight = user.Height
+				uWeight = user.Weight
+				uAge =  user.Age
 				fmt.Println("Login in successfully !!")
 				return
 
