@@ -170,144 +170,158 @@ func envOrDefault(key, defaultValue string) string {
 }
 
 func myHandler2(w http.ResponseWriter, r *http.Request) {
+	if len(uUsername) == 0 {
 
-	tmpl := template.Must(template.ParseFiles("forms2.html"))
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-	if r.Method != http.MethodPost {
-		tmpl.Execute(w, nil)
-		return
-	}
-
-	details := MealDetails{
-		Name: r.FormValue("name"),
-	}
-	exdetails := ExDetails{
-		Name: r.FormValue("name"),
-	}
-	// do something with details
-	_ = details
-	log.Println(details.Name)
-	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge), "height_cm": FloatToString(uHeight), "weight_kg": FloatToString(uWeight), "gender": uGender}
-	jsonValue, _ := json.Marshal(jsonData)
-	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("x-app-id", "40523543")
-	request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
-	request.Header.Set("x-remote-user-id", "0")
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		//log.Fatal("The HTTP request failed with error %s\n", err)
-		//fmt.Println("weselna lel error")
-		// z := Responser{err.Error(), false, "workout not found"}
-		// tmpl.Execute(w, z)
 	} else {
-		data, _ := ioutil.ReadAll(response.Body)
+		tmpl := template.Must(template.ParseFiles("forms2.html"))
 
-		log.Println(string(data))
-
-		var result map[string]interface{}
-		json.Unmarshal([]byte(data), &result)
-		exe := result["exercises"].([]interface{})
-		if len(exe) != 0 {
-			item := exe[0].(map[string]interface{})
-
-			duration := item["duration_min"].(float64)
-			numberOfcalories := item["nf_calories"].(float64)
-
-			message := "number of calories burned during " + FloatToString(duration) + " minutes is " + FloatToString(numberOfcalories) + " Kcal"
-
-			z := Responser{string(data), true, message}
-			tmpl.Execute(w, z)
-
-		} else {
-			z := Responser{"", true, "workout not found"}
-			tmpl.Execute(w, z)
-
+		if r.Method != http.MethodPost {
+			tmpl.Execute(w, nil)
+			return
 		}
 
-	}
+		details := MealDetails{
+			Name: r.FormValue("name"),
+		}
+		exdetails := ExDetails{
+			Name: r.FormValue("name"),
+		}
+		// do something with details
+		_ = details
+		log.Println(details.Name)
+		jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge), "height_cm": FloatToString(uHeight), "weight_kg": FloatToString(uWeight), "gender": uGender}
+		jsonValue, _ := json.Marshal(jsonData)
+		request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("x-app-id", "40523543")
+		request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
+		request.Header.Set("x-remote-user-id", "0")
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			//log.Fatal("The HTTP request failed with error %s\n", err)
+			//fmt.Println("weselna lel error")
+			// z := Responser{err.Error(), false, "workout not found"}
+			// tmpl.Execute(w, z)
+		} else {
+			data, _ := ioutil.ReadAll(response.Body)
 
+			log.Println(string(data))
+
+			var result map[string]interface{}
+			json.Unmarshal([]byte(data), &result)
+			exe := result["exercises"].([]interface{})
+			if len(exe) != 0 {
+				item := exe[0].(map[string]interface{})
+
+				duration := item["duration_min"].(float64)
+				numberOfcalories := item["nf_calories"].(float64)
+
+				message := "number of calories burned during " + strconv.Itoa(int(duration)) + " minutes is " + strconv.Itoa(int(numberOfcalories)) + " Kcal"
+
+				z := Responser{string(data), true, message}
+				tmpl.Execute(w, z)
+
+			} else {
+				z := Responser{"", true, "workout not found"}
+				tmpl.Execute(w, z)
+
+			}
+
+		}
+	}
 }
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
+	if len(uUsername) == 0 {
 
-	tmpl := template.Must(template.ParseFiles("forms.html"))
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-	if r.Method != http.MethodPost {
-		tmpl.Execute(w, nil)
-		return
-	}
-
-	details := MealDetails{
-		Name: r.FormValue("name"),
-	}
-
-	// do something with details
-	_ = details
-	log.Println(details.Name)
-	jsonData := map[string]string{"query": details.Name}
-	jsonValue, _ := json.Marshal(jsonData)
-	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("x-app-id", "40523543")
-	request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
-	request.Header.Set("x-remote-user-id", "0")
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		log.Fatal("The HTTP request failed with error %s\n", err)
-		z := Responser{err.Error(), false, ""}
-		tmpl.Execute(w, z)
 	} else {
+		tmpl := template.Must(template.ParseFiles("forms.html"))
 
-		data, _ := ioutil.ReadAll(response.Body)
-
-		log.Println(string(data))
-
-		var result map[string]interface{}
-		json.Unmarshal([]byte(data), &result)
-		mea := result["foods"].([]interface{})
-		if len(mea) != 0 {
-			item := mea[0].(map[string]interface{})
-
-			foodName := item["food_name"].(string)
-			servingQty := item["serving_qty"].(float64)
-			servingUnit := item["serving_unit"].(string)
-			servingGrams := item["serving_weight_grams"].(float64)
-			numberOfcalories := item["nf_calories"].(float64)
-			carbs := item["nf_total_carbohydrate"].(float64)
-			protein := item["nf_protein"].(float64)
-
-			message := "food Name: " + foodName + "\n" + "Serving Quantity: " + FloatToString(servingQty) + "\n" +
-				"Serving unit: " + servingUnit + "\n" +
-				"serving grams: " + FloatToString(servingGrams) + "\n" +
-				"number of calories: " + FloatToString(numberOfcalories) + "\n" +
-				"carbs: " + FloatToString(carbs) + "\n" +
-				"protein: " + FloatToString(protein) + "\n"
-
-			z := Responser{string(data), true, message}
-			tmpl.Execute(w, z)
-
-		} else {
-			z := Responser{"", true, "meal not found"}
-			tmpl.Execute(w, z)
-
+		if r.Method != http.MethodPost {
+			tmpl.Execute(w, nil)
+			return
 		}
 
-	}
+		details := MealDetails{
+			Name: r.FormValue("name"),
+		}
 
+		// do something with details
+		_ = details
+		log.Println(details.Name)
+		jsonData := map[string]string{"query": details.Name}
+		jsonValue, _ := json.Marshal(jsonData)
+		request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("x-app-id", "40523543")
+		request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
+		request.Header.Set("x-remote-user-id", "0")
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			log.Fatal("The HTTP request failed with error %s\n", err)
+			z := Responser{err.Error(), false, ""}
+			tmpl.Execute(w, z)
+		} else {
+
+			data, _ := ioutil.ReadAll(response.Body)
+
+			log.Println(string(data))
+
+			var result map[string]interface{}
+			json.Unmarshal([]byte(data), &result)
+			mea := result["foods"].([]interface{})
+			if len(mea) != 0 {
+				item := mea[0].(map[string]interface{})
+
+				foodName := item["food_name"].(string)
+				servingQty := item["serving_qty"].(float64)
+				servingUnit := item["serving_unit"].(string)
+				servingGrams := item["serving_weight_grams"].(float64)
+				numberOfcalories := item["nf_calories"].(float64)
+				carbs := item["nf_total_carbohydrate"].(float64)
+				protein := item["nf_protein"].(float64)
+
+				message := "food Name: " + foodName + "\n" + "Serving Quantity: " + strconv.Itoa(int(servingQty)) + "\n" +
+
+					"Serving unit: " + servingUnit + "\n" +
+					"serving grams: " + strconv.Itoa(int(servingGrams)) + "\n" +
+					"number of calories: " + strconv.Itoa(int(numberOfcalories)) + "\n" +
+					"carbs: " + strconv.Itoa(int(carbs)) + "\n" +
+					"protein: " + strconv.Itoa(int(protein)) + "\n"
+
+				z := Responser{string(data), true, message}
+				tmpl.Execute(w, z)
+
+			} else {
+				z := Responser{"", true, "meal not found"}
+				tmpl.Execute(w, z)
+
+			}
+
+		}
+	}
 }
 
 func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
+	if len(uUsername) == 0 {
 
-	tmpl := template.Must(template.ParseFiles("menu.html"))
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-	if r.Method != http.MethodPost {
-		tmpl.Execute(w, nil)
-		return
+	} else {
+		tmpl := template.Must(template.ParseFiles("menu.html"))
+
+		if r.Method != http.MethodPost {
+			tmpl.Execute(w, nil)
+			return
+		}
+
 	}
-
 }
 
 func myHandlerLogin(e *mongoDbdatastore) http.Handler {
