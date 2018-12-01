@@ -45,6 +45,7 @@ var (
 	// db    *sql.DB
 	// cache *redis.Client
 )
+
 // type Result struct {
 //     Common[]   string        `json:"common"`
 //     Branded[] struct{
@@ -54,9 +55,7 @@ var (
 // 		Calories `json:"nf_calories"`
 // 	}`json:"branded"`
 
-
 // }
-
 
 type mongoDbdatastore struct {
 	*mgo.Session
@@ -204,7 +203,7 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 		// tmpl.Execute(w, z)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
-		
+
 		log.Println(string(data))
 
 		var result map[string]interface{}
@@ -224,7 +223,7 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 		} else {
 			z := Responser{"", true, "workout not found"}
 			tmpl.Execute(w, z)
-			//fmt.Println("weselna lel error")
+
 		}
 
 	}
@@ -263,12 +262,38 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		data, _ := ioutil.ReadAll(response.Body)
+
 		log.Println(string(data))
-		z := Responser{string(data), true, ""}
 
-		tmpl.Execute(w, z)
+		var result map[string]interface{}
+		json.Unmarshal([]byte(data), &result)
+		mea := result["foods"].([]interface{})
+		if len(mea) != 0 {
+			item := mea[0].(map[string]interface{})
 
+			foodName := item["food_name"].(string)
+			servingQty := item["serving_qty"].(float64)
+			servingUnit := item["serving_unit"].(string)
+			servingGrams := item["serving_weight_grams"].(float64)
+			numberOfcalories := item["nf_calories"].(float64)
+			carbs := item["nf_total_carbohydrate"].(float64)
+			protein := item["nf_protein"].(float64)
 
+			message := "food Name: " + foodName + "\n" + "Serving Quantity: " + FloatToString(servingQty) + "\n" +
+				"Serving unit: " + servingUnit + "\n" +
+				"serving grams: " + FloatToString(servingGrams) + "\n" +
+				"number of calories: " + FloatToString(numberOfcalories) + "\n" +
+				"carbs: " + FloatToString(carbs) + "\n" +
+				"protein: " + FloatToString(protein) + "\n"
+
+			z := Responser{string(data), true, message}
+			tmpl.Execute(w, z)
+
+		} else {
+			z := Responser{"", true, "meal not found"}
+			tmpl.Execute(w, z)
+
+		}
 
 	}
 
