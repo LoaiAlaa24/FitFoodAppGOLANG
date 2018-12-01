@@ -47,6 +47,18 @@ var (
 	// db    *sql.DB
 	// cache *redis.Client
 )
+// type Result struct {
+//     Common[]   string        `json:"common"`
+//     Branded[] struct{
+// 		ItemID	`json:"nix_item_id"`
+// 		ServingUnit `json:"serving_unit"`
+// 		Photo `json:"photo"`
+// 		Calories `json:"nf_calories"`
+// 	}`json:"branded"`
+
+
+// }
+
 
 type mongoDbdatastore struct {
 	*mgo.Session
@@ -192,6 +204,7 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 		tmpl.Execute(w, z)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
+		
 		log.Println(string(data))
 		z := Responser{string(data), true}
 		tmpl.Execute(w, z)
@@ -229,10 +242,13 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 		z := Responser{err.Error(), false}
 		tmpl.Execute(w, z)
 	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		log.Println(string(data))
+		 data, _ := ioutil.ReadAll(response.Body)
+		// log.Println(response.Body)
 		z := Responser{string(data), true}
 		tmpl.Execute(w, z)
+
+
+
 	}
 
 }
