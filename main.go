@@ -29,6 +29,9 @@ var (
 	uHeight float64
 	uWeight float64
 	uAge float64
+	uGender string
+	uUsername string
+
 	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
 	dbPort     = envOrDefault("MYAPP_DATABASE_PORT", "5432")
 	dbUser     = envOrDefault("MYAPP_DATABASE_USER", "root")
@@ -174,7 +177,7 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	// do something with details
 	_ = details
 	log.Println(details.Name)
-	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge)}
+	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge) , "height_cm":FloatToString(uHeight) , "weight_kg" :FloatToString(uWeight),"gender": uGender} 
 	jsonValue, _ := json.Marshal(jsonData)
 	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
 	request.Header.Set("Content-Type", "application/json")
@@ -271,6 +274,8 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 				uHeight = user.Height
 				uWeight = user.Weight
 				uAge =  user.Age
+				uGender = user.Gender
+				uUsername = user.Username
 				fmt.Println("Login in successfully !!")
 				return
 
