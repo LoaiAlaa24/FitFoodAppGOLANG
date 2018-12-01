@@ -1,5 +1,12 @@
 {{if .Success}}
-	<h1>{{.Response}}</h1>
+
+<h1>Exercise Details Entry</h1>
+<form method="POST">
+	<label>Exercise Name:</label><br />
+	<input type="text" name="name"><br />
+	<input type="submit">
+</form>
+	<h1>{{.Message}}</h1>
 {{else}}
 	<h1>Exercise Details Entry</h1>
 	<form method="POST">

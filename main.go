@@ -19,17 +19,15 @@ import (
 
 	_ "github.com/lib/pq"
 
-
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-
 var (
-	uHeight float64
-	uWeight float64
-	uAge float64
-	uGender string
+	uHeight   float64
+	uWeight   float64
+	uAge      float64
+	uGender   string
 	uUsername string
 
 	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
@@ -63,9 +61,10 @@ var (
 type mongoDbdatastore struct {
 	*mgo.Session
 }
+
 func FloatToString(input_num float64) string {
-    // to convert a float number to a string
-    return strconv.FormatFloat(input_num, 'f', 6, 64)
+	// to convert a float number to a string
+	return strconv.FormatFloat(input_num, 'f', 6, 64)
 }
 
 type user struct {
@@ -89,6 +88,7 @@ type ExDetails struct {
 type Responser struct {
 	Response string
 	Success  bool
+	Message  string
 }
 
 type signUp struct {
@@ -129,7 +129,6 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	return nil
 }
 
-
 func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 
 	session := m.Copy()
@@ -138,7 +137,7 @@ func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 	u := user{}
 	err := userCollection.Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		
+
 		return user{}, err
 	}
 	log.Println(u)
@@ -189,7 +188,7 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	// do something with details
 	_ = details
 	log.Println(details.Name)
-	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge) , "height_cm":FloatToString(uHeight) , "weight_kg" :FloatToString(uWeight),"gender": uGender} 
+	jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge), "height_cm": FloatToString(uHeight), "weight_kg": FloatToString(uWeight), "gender": uGender}
 	jsonValue, _ := json.Marshal(jsonData)
 	request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
 	request.Header.Set("Content-Type", "application/json")
@@ -199,15 +198,35 @@ func myHandler2(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		log.Fatal("The HTTP request failed with error %s\n", err)
-		z := Responser{err.Error(), false}
-		tmpl.Execute(w, z)
+		//log.Fatal("The HTTP request failed with error %s\n", err)
+		//fmt.Println("weselna lel error")
+		// z := Responser{err.Error(), false, "workout not found"}
+		// tmpl.Execute(w, z)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
 		
 		log.Println(string(data))
-		z := Responser{string(data), true}
-		tmpl.Execute(w, z)
+
+		var result map[string]interface{}
+		json.Unmarshal([]byte(data), &result)
+		exe := result["exercises"].([]interface{})
+		if len(exe) != 0 {
+			item := exe[0].(map[string]interface{})
+
+			duration := item["duration_min"].(float64)
+			numberOfcalories := item["nf_calories"].(float64)
+
+			message := "number of calories burned during " + FloatToString(duration) + " minutes is " + FloatToString(numberOfcalories) + " Kcal"
+
+			z := Responser{string(data), true, message}
+			tmpl.Execute(w, z)
+
+		} else {
+			z := Responser{"", true, "workout not found"}
+			tmpl.Execute(w, z)
+			//fmt.Println("weselna lel error")
+		}
+
 	}
 
 }
@@ -239,12 +258,14 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Do(request)
 	if err != nil {
 		log.Fatal("The HTTP request failed with error %s\n", err)
-		z := Responser{err.Error(), false}
+		z := Responser{err.Error(), false, ""}
 		tmpl.Execute(w, z)
 	} else {
-		 data, _ := ioutil.ReadAll(response.Body)
-		// log.Println(response.Body)
-		z := Responser{string(data), true}
+
+		data, _ := ioutil.ReadAll(response.Body)
+		log.Println(string(data))
+		z := Responser{string(data), true, ""}
+
 		tmpl.Execute(w, z)
 
 
@@ -289,7 +310,7 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 				tmpl.Execute(w, nil)
 				uHeight = user.Height
 				uWeight = user.Weight
-				uAge =  user.Age
+				uAge = user.Age
 				uGender = user.Gender
 				uUsername = user.Username
 				fmt.Println("Login in successfully !!")
@@ -351,7 +372,7 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 func main() {
 
 	db, err := createNewDb(dbHost + ":27017")
-	//db, err := createNewDb("localhost:27017")
+	//db, err := createNewDb("localhost:2000")
 	if err != nil {
 		fmt.Println("error")
 		log.Fatal(err)
