@@ -2,8 +2,8 @@
 
 
 	"dbName": "FitFood" , 
-	"dbUsername": "mongoadmin",
-	"dbPassword": "secret"
+	"dbUsername": "root",
+	"dbPassword": "123456789"
 
 
 

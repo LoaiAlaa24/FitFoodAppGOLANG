@@ -23,6 +23,25 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+
+type Config struct {
+    DbName string `json:"dbName"`
+    DbUsername string `json:"dbUsername"`
+    DbPassword string `json:"dbPassword"`
+}
+
+func LoadConfiguration(file string) Config {
+    var config Config
+    configFile, err := os.Open(file)
+    defer configFile.Close()
+    if err != nil {
+        fmt.Println(err.Error())
+    }
+    jsonParser := json.NewDecoder(configFile)
+    jsonParser.Decode(&config)
+    return config
+}
+
 var (
 	uHeight   float64
 	uWeight   float64
@@ -33,11 +52,11 @@ var (
 	dbHost  = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
 	dbPort  = envOrDefault("MYAPP_DATABASE_PORT", "27017")
 	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
-	dbName = envOrDefault("dbName", "" )
-	dbUsername = envOrDefault("dbUsername","")
-	dbPassword = envOrDefault("dbPassword","")
+	config1 Config = LoadConfiguration("config.json")
 
 )
+
+
 
 type mealResponse struct {
 	meals []meal
@@ -68,11 +87,7 @@ type meal struct {
 	Username     string `json:"username" bson:"username"`
 	NumberOfcals string `json:"numberOfcals" bson:"numberOfcals"`
 }
-type Config struct {
-    DbName string `json:"dbName"`
-    DbUsername string `json:"dbUsername"`
-    DbPassword string `json:"dbPassword"`
-}
+
 type workout struct {
 	Workoutname  string `json:"Workoutname" bson:"Workoutname"`
 	Username     string `json:"username" bson:"username"`
@@ -113,9 +128,9 @@ type logIn struct {
 	Password string
 }
 
-func createNewDb(url *mgo.DialInfo) (*mongoDbdatastore, error) {
+func createNewDb(url string) (*mongoDbdatastore, error) {
 
-	session, err := mgo.DialWithInfo(url)
+	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +143,8 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	session := m.Copy()
 
 	defer session.Close()
-	userCollection := session.DB("FitFood").C("Users")
+	log.Println(config1.DbName)
+	userCollection := session.DB(config1.DbName).C("Users")
 	err := userCollection.Insert(&user)
 	if err != nil {
 		return err
@@ -142,7 +158,8 @@ func (m *mongoDbdatastore) CreateFoodItem(meal meal) error {
 	session := m.Copy()
 
 	defer session.Close()
-	mealCollection := session.DB("FitFood").C("MealsHistory")
+	log.Println(config1.DbName)
+	mealCollection := session.DB(config1.DbName).C("MealsHistory")
 	err := mealCollection.Insert(&meal)
 	if err != nil {
 		return err
@@ -156,7 +173,7 @@ func (m *mongoDbdatastore) CreateExerciseItem(workout workout) error {
 	session := m.Copy()
 
 	defer session.Close()
-	workoutCollection := session.DB("FitFood").C("WorkoutsHistory")
+	workoutCollection := session.DB(config1.DbName).C("WorkoutsHistory")
 	err := workoutCollection.Insert(&workout)
 	if err != nil {
 		return err
@@ -169,7 +186,8 @@ func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 
 	session := m.Copy()
 	defer session.Close()
-	userCollection := session.DB("FitFood").C("Users")
+	log.Println(config1.DbName)
+	userCollection := session.DB(config1.DbName).C("Users")
 	u := user{}
 	err := userCollection.Find(bson.M{"email": email}).One(&u)
 	if err != nil {
@@ -185,7 +203,7 @@ func (m *mongoDbdatastore) getUserUsername(username string) (user, error) {
 
 	session := m.Copy()
 	defer session.Close()
-	userCollection := session.DB("FitFood").C("Users")
+	userCollection := session.DB(config1.DbName).C("Users")
 	u := user{}
 	err := userCollection.Find(bson.M{"username": username}).One(&u)
 	if err != nil {
@@ -199,7 +217,7 @@ func (m *mongoDbdatastore) getMealsByUsername(username string) ([]meal, error) {
 
 	session := m.Copy()
 	defer session.Close()
-	mealsCollection := session.DB("FitFood").C("MealsHistory")
+	mealsCollection := session.DB(config1.DbName).C("MealsHistory")
 	//mea := meal{}
 	meals := []meal{}
 	err := mealsCollection.Find(bson.M{"username": username}).All(&meals)
@@ -218,7 +236,7 @@ func (m *mongoDbdatastore) getMealsByname(name string) (meal, error) {
 
 	session := m.Copy()
 	defer session.Close()
-	mealsCollection := session.DB("FitFood").C("MealsHistory")
+	mealsCollection := session.DB(config1.DbName).C("MealsHistory")
 	//mea := meal{}
 	mea := meal{}
 	err := mealsCollection.Find(bson.M{"username": name}).One(&mea)
@@ -237,7 +255,7 @@ func (m *mongoDbdatastore) getWorkoutsByUsername(username string) ([]workout, er
 
 	session := m.Copy()
 	defer session.Close()
-	workoutsCollection := session.DB("FitFood").C("WorkoutsHistory")
+	workoutsCollection := session.DB(config1.DbName).C("WorkoutsHistory")
 	//wo := workout{}
 	wo := []workout{}
 	err := workoutsCollection.Find(bson.M{"username": username}).All(&wo)
@@ -251,7 +269,7 @@ func (m *mongoDbdatastore) getWorkoutsByname(name string) (workout, error) {
 
 	session := m.Copy()
 	defer session.Close()
-	workoutsCollection := session.DB("FitFood").C("WorkoutsHistory")
+	workoutsCollection := session.DB(config1.DbName).C("WorkoutsHistory")
 	//wo := workout{}
 	wo := workout{}
 	err := workoutsCollection.Find(bson.M{"username": name}).One(&wo)
@@ -592,31 +610,23 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 	})
 
 }
-func LoadConfiguration(file string) Config {
-    var config Config
-    configFile, err := os.Open(file)
-    defer configFile.Close()
-    if err != nil {
-        fmt.Println(err.Error())
-    }
-    jsonParser := json.NewDecoder(configFile)
-    jsonParser.Decode(&config)
-    return config
-}
+
 func main() {
 
 	//db, err := createNewDb(dbHost + ":27017")
-	config := LoadConfiguration("config.json")
-	log.Println(config)
-	stringArray := []string{dbHost}
-	mongoDBDialInfo := &mgo.DialInfo{
-		Addrs:    stringArray,
-		Database: config.DbName,
-		Username: config.DbUsername,
-		Password: config.DbPassword,
-	}
+	// config := LoadConfiguration("config.json")
+	// log.Println(config)
+	// stringArray := []string{dbHost}
+	// mongoDBDialInfo := &mgo.DialInfo{
+	// 	Addrs:    stringArray,
+	// 	Database: config.DbName,
+	// 	Username: config.DbUsername,
+	// 	Password: config.DbPassword,
+	// }
 
-	db, _ := createNewDb(mongoDBDialInfo)
+//	db, _ := createNewDb(mongoDBDialInfo)
+
+db, _ := createNewDb(dbHost)
 
 	login := myHandlerLogin(db)
 	signUp := myHandlerSigning(db)

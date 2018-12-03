@@ -15,8 +15,4 @@ services:
       - 3000:8080
   mongodb:
      image: healthcheck/mongo
-     environment:
-          - MONGODB_PRIMARY_ROOT_USER=root
-          - MONGODB_ROOT_PASSWORD=123456789
-     
-     command: --auth
+ 
