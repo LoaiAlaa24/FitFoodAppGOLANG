@@ -14,8 +14,9 @@ services:
     ports:
       - 3000:8080
   mongodb:
-    image: healthcheck/mongo
-
-    enviroment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+     image: healthcheck/mongo
+     environment:
+          - MONGODB_PRIMARY_ROOT_USER=root
+          - MONGODB_ROOT_PASSWORD=123456789
+     
+     command: --auth
