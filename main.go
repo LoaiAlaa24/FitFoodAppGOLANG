@@ -33,6 +33,10 @@ var (
 	dbHost  = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
 	dbPort  = envOrDefault("MYAPP_DATABASE_PORT", "27017")
 	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
+	dbName = envOrDefault("dbName", "" )
+	dbUsername = envOrDefault("dbUsername","")
+	dbPassword = envOrDefault("dbPassword","")
+
 )
 
 type mealResponse struct {
@@ -64,7 +68,11 @@ type meal struct {
 	Username     string `json:"username" bson:"username"`
 	NumberOfcals string `json:"numberOfcals" bson:"numberOfcals"`
 }
-
+type Config struct {
+    DbName string `json:"dbName"`
+    DbUsername string `json:"dbUsername"`
+    DbPassword string `json:"dbPassword"`
+}
 type workout struct {
 	Workoutname  string `json:"Workoutname" bson:"Workoutname"`
 	Username     string `json:"username" bson:"username"`
@@ -105,9 +113,9 @@ type logIn struct {
 	Password string
 }
 
-func createNewDb(url string) (*mongoDbdatastore, error) {
+func createNewDb(url *mgo.DialInfo) (*mongoDbdatastore, error) {
 
-	session, err := mgo.Dial(url)
+	session, err := mgo.DialWithInfo(url)
 	if err != nil {
 		return nil, err
 	}
@@ -584,11 +592,31 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 	})
 
 }
-
+func LoadConfiguration(file string) Config {
+    var config Config
+    configFile, err := os.Open(file)
+    defer configFile.Close()
+    if err != nil {
+        fmt.Println(err.Error())
+    }
+    jsonParser := json.NewDecoder(configFile)
+    jsonParser.Decode(&config)
+    return config
+}
 func main() {
 
 	//db, err := createNewDb(dbHost + ":27017")
-	db, _ := createNewDb(dbHost)
+	config := LoadConfiguration("config.json")
+	log.Println(config)
+	stringArray := []string{dbHost}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    stringArray,
+		Database: config.DbName,
+		Username: config.DbUsername,
+		Password: config.DbPassword,
+	}
+
+	db, _ := createNewDb(mongoDBDialInfo)
 
 	login := myHandlerLogin(db)
 	signUp := myHandlerSigning(db)
