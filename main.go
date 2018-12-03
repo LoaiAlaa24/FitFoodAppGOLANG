@@ -30,32 +30,14 @@ var (
 	uGender   string
 	uUsername string
 
-	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
-	dbPort     = envOrDefault("MYAPP_DATABASE_PORT", "5432")
-	dbUser     = envOrDefault("MYAPP_DATABASE_USER", "root")
-	dbPassword = envOrDefault("MYAPP_DATABASE_PASSWORD", "secret")
-	dbName     = envOrDefault("MYAPP_DATABASE_NAME", "myapp")
-
-	cacheHost = envOrDefault("MYAPP_CACHE_HOST", "localhost")
-	cachePort = envOrDefault("MYAPP_CACHE_PORT", "6379")
-
-	webHost = envOrDefault("MYAPP_WEB_HOST", "")
+	dbHost  = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
+	dbPort  = envOrDefault("MYAPP_DATABASE_PORT", "27017")
 	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
-
-	// db    *sql.DB
-	// cache *redis.Client
 )
 
-// type Result struct {
-//     Common[]   string        `json:"common"`
-//     Branded[] struct{
-// 		ItemID	`json:"nix_item_id"`
-// 		ServingUnit `json:"serving_unit"`
-// 		Photo `json:"photo"`
-// 		Calories `json:"nf_calories"`
-// 	}`json:"branded"`
-
-// }
+type mealResponse struct {
+	meals []meal
+}
 
 type mongoDbdatastore struct {
 	*mgo.Session
@@ -77,6 +59,18 @@ type user struct {
 	Gender   string  `json:"gender" bson:"gender"`
 }
 
+type meal struct {
+	Mealname     string `json:"mealname" bson:"mealname"`
+	Username     string `json:"username" bson:"username"`
+	NumberOfcals string `json:"numberOfcals" bson:"numberOfcals"`
+}
+
+type workout struct {
+	Workoutname  string `json:"Workoutname" bson:"Workoutname"`
+	Username     string `json:"username" bson:"username"`
+	NumberOfcals string `json:"numberOfcals" bson:"numberOfcals"`
+}
+
 type MealDetails struct {
 	Name string
 }
@@ -88,6 +82,13 @@ type Responser struct {
 	Response string
 	Success  bool
 	Message  string
+}
+
+type HistoryResponse struct {
+	Response        string
+	Success         bool
+	FoodResponse    string
+	WorkoutResponse string
 }
 
 type signUp struct {
@@ -128,6 +129,34 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	return nil
 }
 
+func (m *mongoDbdatastore) CreateFoodItem(meal meal) error {
+
+	session := m.Copy()
+
+	defer session.Close()
+	mealCollection := session.DB("FitFood").C("MealsHistory")
+	err := mealCollection.Insert(&meal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *mongoDbdatastore) CreateExerciseItem(workout workout) error {
+
+	session := m.Copy()
+
+	defer session.Close()
+	workoutCollection := session.DB("FitFood").C("WorkoutsHistory")
+	err := workoutCollection.Insert(&workout)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *mongoDbdatastore) getUserEmail(email string) (user, error) {
 
 	session := m.Copy()
@@ -158,6 +187,73 @@ func (m *mongoDbdatastore) getUserUsername(username string) (user, error) {
 
 }
 
+func (m *mongoDbdatastore) getMealsByUsername(username string) ([]meal, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	mealsCollection := session.DB("FitFood").C("MealsHistory")
+	//mea := meal{}
+	meals := []meal{}
+	err := mealsCollection.Find(bson.M{"username": username}).All(&meals)
+	if err != nil {
+		fmt.Println("meals array is empty")
+
+		return nil, err
+	}
+	fmt.Println("meals array is not empty")
+	fmt.Println(meals)
+	return meals, nil
+
+}
+
+func (m *mongoDbdatastore) getMealsByname(name string) (meal, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	mealsCollection := session.DB("FitFood").C("MealsHistory")
+	//mea := meal{}
+	mea := meal{}
+	err := mealsCollection.Find(bson.M{"username": name}).One(&mea)
+	if err != nil {
+		//fmt.Println("meals array is empty")
+
+		return meal{}, err
+	}
+	//fmt.Println("meals array is not empty")
+	//fmt.Println(meals)
+	return mea, nil
+
+}
+
+func (m *mongoDbdatastore) getWorkoutsByUsername(username string) ([]workout, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	workoutsCollection := session.DB("FitFood").C("WorkoutsHistory")
+	//wo := workout{}
+	wo := []workout{}
+	err := workoutsCollection.Find(bson.M{"username": username}).All(&wo)
+	if err != nil {
+		return nil, err
+	}
+	return wo, nil
+
+}
+func (m *mongoDbdatastore) getWorkoutsByname(name string) (workout, error) {
+
+	session := m.Copy()
+	defer session.Close()
+	workoutsCollection := session.DB("FitFood").C("WorkoutsHistory")
+	//wo := workout{}
+	wo := workout{}
+	err := workoutsCollection.Find(bson.M{"username": name}).One(&wo)
+	if err != nil {
+		return workout{}, err
+	}
+	return wo, nil
+
+}
+
 func (m *mongoDbdatastore) Close() {
 	m.Close()
 }
@@ -168,144 +264,160 @@ func envOrDefault(key, defaultValue string) string {
 	}
 	return defaultValue
 }
+func myHandler2(e *mongoDbdatastore) http.Handler {
 
-func myHandler2(w http.ResponseWriter, r *http.Request) {
-	if len(uUsername) == 0 {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(uUsername) == 0 {
 
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-	} else {
-		tmpl := template.Must(template.ParseFiles("forms2.html"))
-
-		if r.Method != http.MethodPost {
-			tmpl.Execute(w, nil)
-			return
-		}
-
-		details := MealDetails{
-			Name: r.FormValue("name"),
-		}
-		exdetails := ExDetails{
-			Name: r.FormValue("name"),
-		}
-		// do something with details
-		_ = details
-		log.Println(details.Name)
-		jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge), "height_cm": FloatToString(uHeight), "weight_kg": FloatToString(uWeight), "gender": uGender}
-		jsonValue, _ := json.Marshal(jsonData)
-		request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
-		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("x-app-id", "40523543")
-		request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
-		request.Header.Set("x-remote-user-id", "0")
-		client := &http.Client{}
-		response, err := client.Do(request)
-		if err != nil {
-			//log.Fatal("The HTTP request failed with error %s\n", err)
-			//fmt.Println("weselna lel error")
-			// z := Responser{err.Error(), false, "workout not found"}
-			// tmpl.Execute(w, z)
 		} else {
-			data, _ := ioutil.ReadAll(response.Body)
+			tmpl := template.Must(template.ParseFiles("forms2.html"))
 
-			log.Println(string(data))
-
-			var result map[string]interface{}
-			json.Unmarshal([]byte(data), &result)
-			exe := result["exercises"].([]interface{})
-			if len(exe) != 0 {
-				item := exe[0].(map[string]interface{})
-
-				duration := item["duration_min"].(float64)
-				numberOfcalories := item["nf_calories"].(float64)
-
-				message := "number of calories burned during " + strconv.Itoa(int(duration)) + " minutes is " + strconv.Itoa(int(numberOfcalories)) + " Kcal"
-
-				z := Responser{string(data), true, message}
-				tmpl.Execute(w, z)
-
-			} else {
-				z := Responser{"", true, "workout not found"}
-				tmpl.Execute(w, z)
-
+			if r.Method != http.MethodPost {
+				tmpl.Execute(w, nil)
+				return
 			}
 
+			details := MealDetails{
+				Name: r.FormValue("name"),
+			}
+			exdetails := ExDetails{
+				Name: r.FormValue("name"),
+			}
+			// do something with details
+			_ = details
+			log.Println(details.Name)
+			jsonData := map[string]string{"query": exdetails.Name, "age": FloatToString(uAge), "height_cm": FloatToString(uHeight), "weight_kg": FloatToString(uWeight), "gender": uGender}
+			jsonValue, _ := json.Marshal(jsonData)
+			request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/exercise", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("x-app-id", "40523543")
+			request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
+			request.Header.Set("x-remote-user-id", "0")
+			client := &http.Client{}
+			response, err := client.Do(request)
+			if err != nil {
+				//log.Fatal("The HTTP request failed with error %s\n", err)
+				//fmt.Println("weselna lel error")
+				// z := Responser{err.Error(), false, "workout not found"}
+				// tmpl.Execute(w, z)
+			} else {
+				data, _ := ioutil.ReadAll(response.Body)
+
+				log.Println(string(data))
+
+				var result map[string]interface{}
+				json.Unmarshal([]byte(data), &result)
+				exe := result["exercises"].([]interface{})
+				if len(exe) != 0 {
+					item := exe[0].(map[string]interface{})
+					Workoutname := item["name"].(string)
+					duration := item["duration_min"].(float64)
+					numberOfcalories := item["nf_calories"].(float64)
+
+					message := "number of calories burned during " + strconv.Itoa(int(duration)) + " minutes is " + strconv.Itoa(int(numberOfcalories)) + " Kcal"
+					workoutTobeAdded := workout{Workoutname, uUsername, strconv.Itoa(int(numberOfcalories))}
+
+					_, err = e.getWorkoutsByname(Workoutname)
+					if err != nil {
+						e.CreateExerciseItem(workoutTobeAdded)
+					}
+					z := Responser{string(data), true, message}
+					tmpl.Execute(w, z)
+
+				} else {
+					z := Responser{"", true, "workout not found"}
+					tmpl.Execute(w, z)
+
+				}
+
+			}
 		}
-	}
+	})
 }
+func myHandler(e *mongoDbdatastore) http.Handler {
 
-func myHandler(w http.ResponseWriter, r *http.Request) {
-	if len(uUsername) == 0 {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		if len(uUsername) == 0 {
 
-	} else {
-		tmpl := template.Must(template.ParseFiles("forms.html"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-		if r.Method != http.MethodPost {
-			tmpl.Execute(w, nil)
-			return
-		}
-
-		details := MealDetails{
-			Name: r.FormValue("name"),
-		}
-
-		// do something with details
-		_ = details
-		log.Println(details.Name)
-		jsonData := map[string]string{"query": details.Name}
-		jsonValue, _ := json.Marshal(jsonData)
-		request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
-		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("x-app-id", "40523543")
-		request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
-		request.Header.Set("x-remote-user-id", "0")
-		client := &http.Client{}
-		response, err := client.Do(request)
-		if err != nil {
-			log.Fatal("The HTTP request failed with error %s\n", err)
-			z := Responser{err.Error(), false, ""}
-			tmpl.Execute(w, z)
 		} else {
+			tmpl := template.Must(template.ParseFiles("forms.html"))
 
-			data, _ := ioutil.ReadAll(response.Body)
-
-			log.Println(string(data))
-
-			var result map[string]interface{}
-			json.Unmarshal([]byte(data), &result)
-			mea := result["foods"].([]interface{})
-			if len(mea) != 0 {
-				item := mea[0].(map[string]interface{})
-
-				foodName := item["food_name"].(string)
-				servingQty := item["serving_qty"].(float64)
-				servingUnit := item["serving_unit"].(string)
-				servingGrams := item["serving_weight_grams"].(float64)
-				numberOfcalories := item["nf_calories"].(float64)
-				carbs := item["nf_total_carbohydrate"].(float64)
-				protein := item["nf_protein"].(float64)
-
-				message := "food Name: " + foodName + "\n" + "Serving Quantity: " + strconv.Itoa(int(servingQty)) + "\n" +
-
-					"Serving unit: " + servingUnit + "\n" +
-					"serving grams: " + strconv.Itoa(int(servingGrams)) + "\n" +
-					"number of calories: " + strconv.Itoa(int(numberOfcalories)) + "\n" +
-					"carbs: " + strconv.Itoa(int(carbs)) + "\n" +
-					"protein: " + strconv.Itoa(int(protein)) + "\n"
-
-				z := Responser{string(data), true, message}
-				tmpl.Execute(w, z)
-
-			} else {
-				z := Responser{"", true, "meal not found"}
-				tmpl.Execute(w, z)
-
+			if r.Method != http.MethodPost {
+				tmpl.Execute(w, nil)
+				return
 			}
 
+			details := MealDetails{
+				Name: r.FormValue("name"),
+			}
+
+			// do something with details
+			_ = details
+			log.Println(details.Name)
+			jsonData := map[string]string{"query": details.Name}
+			jsonValue, _ := json.Marshal(jsonData)
+			request, _ := http.NewRequest("POST", "https://trackapi.nutritionix.com/v2/natural/nutrients", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("x-app-id", "40523543")
+			request.Header.Set("x-app-key", "44d9799d0bf08ca4a633dff233675a3d")
+			request.Header.Set("x-remote-user-id", "0")
+			client := &http.Client{}
+			response, err := client.Do(request)
+			if err != nil {
+				//log.Fatal("The HTTP request failed with error %s\n", err)
+				z := Responser{err.Error(), false, ""}
+				tmpl.Execute(w, z)
+			} else {
+
+				data, _ := ioutil.ReadAll(response.Body)
+
+				log.Println(string(data))
+
+				var result map[string]interface{}
+				json.Unmarshal([]byte(data), &result)
+				mea := result["foods"].([]interface{})
+				if len(mea) != 0 {
+					item := mea[0].(map[string]interface{})
+
+					foodName := item["food_name"].(string)
+					servingQty := item["serving_qty"].(float64)
+					servingUnit := item["serving_unit"].(string)
+					servingGrams := item["serving_weight_grams"].(float64)
+					numberOfcalories := item["nf_calories"].(float64)
+					carbs := item["nf_total_carbohydrate"].(float64)
+					protein := item["nf_protein"].(float64)
+
+					message := "food Name: " + foodName + "\n" + "Serving Quantity: " + strconv.Itoa(int(servingQty)) + "\n" +
+
+						"Serving unit: " + servingUnit + "\n" +
+						"serving grams: " + strconv.Itoa(int(servingGrams)) + "\n" +
+						"number of calories: " + strconv.Itoa(int(numberOfcalories)) + "\n" +
+						"carbs: " + strconv.Itoa(int(carbs)) + "\n" +
+						"protein: " + strconv.Itoa(int(protein)) + "\n"
+					mealTobeAdded := meal{foodName, uUsername, strconv.Itoa(int(numberOfcalories))}
+					//e.CreateFoodItem(mealTobeAdded)
+					_, err = e.getMealsByname(foodName)
+					if err != nil {
+						e.CreateFoodItem(mealTobeAdded)
+					}
+					z := Responser{string(data), true, message}
+					tmpl.Execute(w, z)
+
+				} else {
+					z := Responser{"", true, "meal not found"}
+					tmpl.Execute(w, z)
+
+				}
+
+			}
 		}
-	}
+
+	})
 }
 
 func myHandlerMenu(w http.ResponseWriter, r *http.Request) {
@@ -339,14 +451,18 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 
 		user, err := e.getUserEmail(email)
 		if err != nil {
-			log.Fatal(err)
-			fmt.Println("user was not found")
+			//log.Fatal(err)
+			fmt.Println("email not found")
+
+			z := Responser{"", true, "email not found"}
+			tmpl.Execute(w, z)
 
 		} else {
 			if user.Password == password {
 
-				tmpl := template.Must(template.ParseFiles("menu.html"))
-				tmpl.Execute(w, nil)
+				// tmpl := template.Must(template.ParseFiles("menu.html"))
+				// tmpl.Execute(w, nil)
+				http.Redirect(w, r, "/menu", http.StatusSeeOther)
 				uHeight = user.Height
 				uWeight = user.Weight
 				uAge = user.Age
@@ -357,6 +473,50 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 
 			} else {
 				fmt.Println("incorrect password")
+				z := Responser{"", true, "incorrect password"}
+				tmpl.Execute(w, z)
+			}
+		}
+
+	})
+}
+
+func myHandlerHistory(e *mongoDbdatastore) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(uUsername) == 0 {
+
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+
+		} else {
+
+			mealsResp, _ := e.getMealsByUsername(uUsername)
+			fmt.Println(mealsResp)
+			fmt.Println(uUsername)
+			mealsArray := mealResponse{mealsResp}
+			messageFood := ""
+			for _, r := range mealsArray.meals {
+				//fmt.Println(strings.Join(r.Mealname, ","))
+				messageFood = messageFood + r.Mealname + " : " + r.NumberOfcals + "kcal " + "     |     "
+
+			}
+			fmt.Println(messageFood)
+
+			workoutsReponse, _ := e.getWorkoutsByUsername(uUsername)
+			fmt.Println(workoutsReponse)
+			workoutsString := ""
+			for _, r := range workoutsReponse {
+				//fmt.Println(strings.Join(r.Mealname, ","))
+				workoutsString = workoutsString + r.Workoutname + " : " + r.NumberOfcals + "kcal " + "      |      "
+
+			}
+			fmt.Println(workoutsString)
+
+			tmpl := template.Must(template.ParseFiles("history.html"))
+			//fmt.Println(test.Tests[0])
+			z := HistoryResponse{"", true, messageFood, workoutsString}
+			if r.Method != http.MethodPost {
+				tmpl.Execute(w, z)
+				return
 			}
 		}
 
@@ -377,31 +537,48 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 		height, _ := strconv.ParseFloat(r.FormValue("height"), 64)
 		age, _ := strconv.ParseFloat(r.FormValue("age"), 64)
 
-		u := user{r.FormValue("username"), r.FormValue("email"), r.FormValue("password"),
-			height, weight, age, r.FormValue("gender")}
+		if age < 0 || weight < 0 || height < 0 {
+			z := Responser{"", true, "Please enter a valid numbers for either the age or the weight or the height"}
+			tmpl.Execute(w, z)
+		} else {
 
-		user, err := e.getUserEmail(u.Email)
+			u := user{r.FormValue("username"), r.FormValue("email"), r.FormValue("password"),
+				height, weight, age, r.FormValue("gender")}
 
-		if err != nil {
-			_, err := e.getUserUsername(u.Username)
+			user, err := e.getUserEmail(u.Email)
+
 			if err != nil {
-				e.CreateUser(u)
+				_, err := e.getUserUsername(u.Username)
+				if err != nil {
+					e.CreateUser(u)
 
-				tmpl := template.Must(template.ParseFiles("menu.html"))
-				tmpl.Execute(w, nil)
-				fmt.Println("Login in successfully !!")
-				fmt.Println("user added")
-				return
+					// tmpl := template.Must(template.ParseFiles("menu.html"))
+					// tmpl.Execute(w, nil)
+					http.Redirect(w, r, "/menu", http.StatusSeeOther)
+
+					fmt.Println("Login in successfully !!")
+					fmt.Println("user added")
+					uHeight = u.Height
+					uWeight = u.Weight
+					uAge = u.Age
+					uGender = u.Gender
+					uUsername = u.Username
+					return
+
+				} else {
+					fmt.Println("username already exists")
+					z := Responser{"", true, "username already exists"}
+					tmpl.Execute(w, z)
+				}
 
 			} else {
-				fmt.Println("username already exists")
-			}
+				if user.Email == u.Email {
+					fmt.Println("email already exists")
+					z := Responser{"", true, "email already exists"}
+					tmpl.Execute(w, z)
+				}
 
-		} else {
-			if user.Email == u.Email {
-				fmt.Println("email already exists")
 			}
-
 		}
 
 	})
@@ -410,35 +587,22 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 
 func main() {
 
-	db, err := createNewDb(dbHost + ":27017")
-	//db, err := createNewDb("localhost:2000")
-	if err != nil {
-		fmt.Println("error")
-		log.Fatal(err)
-	}
-	//else {
-	// 	u := user{"marwanihab", "marwanihab95@gmail.com", "123456", 70, 50, 160, "male"}
-
-	// 	db.CreateUser(u)
-	// 	// user, err := db.GetUser("marwanihab")
-
-	// 	// if err != nil {
-	// 	// 	log.Fatal(err)
-	// 	// 	fmt.Println("user was not found")
-	// 	// }
-
-	// 	//fmt.Println("success")
-	// }
+	//db, err := createNewDb(dbHost + ":27017")
+	db, _ := createNewDb(dbHost)
 
 	login := myHandlerLogin(db)
 	signUp := myHandlerSigning(db)
+	mealSearch := myHandler(db)
+	workoutsSearch := myHandler2(db)
+	history := myHandlerHistory(db)
 
-	//http.HandleFunc("/", myHandlerMenu)
 	http.HandleFunc("/menu", myHandlerMenu)
 	http.Handle("/", login)
 	http.Handle("/signUp", signUp)
-	http.HandleFunc("/meal", myHandler)
-	http.HandleFunc("/exercise", myHandler2)
-	log.Print("Listening on " + webHost + ":" + webPort + "...")
-	http.ListenAndServe(webHost+":"+webPort, nil)
+	http.Handle("/meal", mealSearch)
+	http.Handle("/exercise", workoutsSearch)
+	http.Handle("/history", history)
+	fmt.Println("Listening on :" + webPort + "...")
+	http.ListenAndServe(":"+webPort, nil)
+	//.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }

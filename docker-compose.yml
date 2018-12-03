@@ -14,5 +14,4 @@ services:
       - 3000:8080
   mongodb:
     image: healthcheck/mongo
-    ports:
-      - 27017:27017
+    
