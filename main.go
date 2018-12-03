@@ -30,13 +30,12 @@ var (
 	uGender   string
 	uUsername string
 
-	dbHost  = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
-	dbPort  = envOrDefault("MYAPP_DATABASE_PORT", "27017")
-	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
-	dbName = envOrDefault("dbName", "" )
-	dbUsername = envOrDefault("dbUsername","")
-	dbPassword = envOrDefault("dbPassword","")
-
+	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
+	dbPort     = envOrDefault("MYAPP_DATABASE_PORT", "27017")
+	webPort    = envOrDefault("MYAPP_WEB_PORT", "8080")
+	dbName     = envOrDefault("dbName", "")
+	dbUsername = envOrDefault("dbUsername", "")
+	dbPassword = envOrDefault("dbPassword", "")
 )
 
 type mealResponse struct {
@@ -69,10 +68,11 @@ type meal struct {
 	NumberOfcals string `json:"numberOfcals" bson:"numberOfcals"`
 }
 type Config struct {
-    DbName string `json:"dbName"`
-    DbUsername string `json:"dbUsername"`
-    DbPassword string `json:"dbPassword"`
+	DbName     string `json:"dbName"`
+	DbUsername string `json:"dbUsername"`
+	DbPassword string `json:"dbPassword"`
 }
+
 type workout struct {
 	Workoutname  string `json:"Workoutname" bson:"Workoutname"`
 	Username     string `json:"username" bson:"username"`
@@ -113,9 +113,9 @@ type logIn struct {
 	Password string
 }
 
-func createNewDb(url *mgo.DialInfo) (*mongoDbdatastore, error) {
+func createNewDb(url string) (*mongoDbdatastore, error) {
 
-	session, err := mgo.DialWithInfo(url)
+	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, err
 	}
@@ -593,44 +593,51 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 
 }
 func LoadConfiguration(file string) Config {
-    var config Config
-    configFile, err := os.Open(file)
-    defer configFile.Close()
-    if err != nil {
-        fmt.Println(err.Error())
-    }
-    jsonParser := json.NewDecoder(configFile)
-    jsonParser.Decode(&config)
-    return config
+	var config Config
+	configFile, err := os.Open(file)
+	defer configFile.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	jsonParser := json.NewDecoder(configFile)
+	jsonParser.Decode(&config)
+	return config
 }
 func main() {
 
-	//db, err := createNewDb(dbHost + ":27017")
+	db, _ := createNewDb(dbHost)
+
 	config := LoadConfiguration("config.json")
 	log.Println(config)
-	stringArray := []string{dbHost}
-	mongoDBDialInfo := &mgo.DialInfo{
-		Addrs:    stringArray,
-		Database: config.DbName,
-		Username: config.DbUsername,
-		Password: config.DbPassword,
+	// stringArray := []string{dbHost}
+	// mongoDBDialInfo := &mgo.DialInfo{
+	// 	Addrs:    stringArray,
+	// 	Database: config.DbName,
+	// 	Username: config.DbUsername,
+	// 	Password: config.DbPassword,
+	// }
+
+	//db, _ := createNewDb(mongoDBDialInfo)
+	db.DB(config.DbName).AddUser(config.DbName, config.DbPassword, true)
+	error := db.DB(config.DbName).Login(config.DbName, config.DbPassword)
+
+	if error != nil {
+
+	} else {
+		login := myHandlerLogin(db)
+		signUp := myHandlerSigning(db)
+		mealSearch := myHandler(db)
+		workoutsSearch := myHandler2(db)
+		history := myHandlerHistory(db)
+
+		http.HandleFunc("/menu", myHandlerMenu)
+		http.Handle("/", login)
+		http.Handle("/signUp", signUp)
+		http.Handle("/meal", mealSearch)
+		http.Handle("/exercise", workoutsSearch)
+		http.Handle("/history", history)
+		fmt.Println("Listening on :" + webPort + "...")
+		http.ListenAndServe(":"+webPort, nil)
+		//.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	}
-
-	db, _ := createNewDb(mongoDBDialInfo)
-
-	login := myHandlerLogin(db)
-	signUp := myHandlerSigning(db)
-	mealSearch := myHandler(db)
-	workoutsSearch := myHandler2(db)
-	history := myHandlerHistory(db)
-
-	http.HandleFunc("/menu", myHandlerMenu)
-	http.Handle("/", login)
-	http.Handle("/signUp", signUp)
-	http.Handle("/meal", mealSearch)
-	http.Handle("/exercise", workoutsSearch)
-	http.Handle("/history", history)
-	fmt.Println("Listening on :" + webPort + "...")
-	http.ListenAndServe(":"+webPort, nil)
-	//.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 }
