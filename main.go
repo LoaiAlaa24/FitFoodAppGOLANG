@@ -4,15 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"strconv"
-
-	// "fmt"
 	"log"
-	// "math/rand"
 	"net/http"
 	"os"
-
-	// "strconv"
-	// "time"
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
@@ -143,7 +137,6 @@ func (m *mongoDbdatastore) CreateUser(user user) error {
 	session := m.Copy()
 
 	defer session.Close()
-	log.Println(config1.DbName)
 	userCollection := session.DB(config1.DbName).C("Users")
 	err := userCollection.Insert(&user)
 	if err != nil {
@@ -158,7 +151,6 @@ func (m *mongoDbdatastore) CreateFoodItem(meal meal) error {
 	session := m.Copy()
 
 	defer session.Close()
-	log.Println(config1.DbName)
 	mealCollection := session.DB(config1.DbName).C("MealsHistory")
 	err := mealCollection.Insert(&meal)
 	if err != nil {
@@ -324,14 +316,8 @@ func myHandler2(e *mongoDbdatastore) http.Handler {
 			client := &http.Client{}
 			response, err := client.Do(request)
 			if err != nil {
-				//log.Fatal("The HTTP request failed with error %s\n", err)
-				//fmt.Println("weselna lel error")
-				// z := Responser{err.Error(), false, "workout not found"}
-				// tmpl.Execute(w, z)
 			} else {
 				data, _ := ioutil.ReadAll(response.Body)
-
-				log.Println(string(data))
 
 				var result map[string]interface{}
 				json.Unmarshal([]byte(data), &result)
@@ -395,14 +381,12 @@ func myHandler(e *mongoDbdatastore) http.Handler {
 			client := &http.Client{}
 			response, err := client.Do(request)
 			if err != nil {
-				//log.Fatal("The HTTP request failed with error %s\n", err)
 				z := Responser{err.Error(), false, ""}
 				tmpl.Execute(w, z)
 			} else {
 
 				data, _ := ioutil.ReadAll(response.Body)
 
-				log.Println(string(data))
 
 				var result map[string]interface{}
 				json.Unmarshal([]byte(data), &result)
@@ -477,7 +461,6 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 
 		user, err := e.getUserEmail(email)
 		if err != nil {
-			//log.Fatal(err)
 			fmt.Println("email not found")
 
 			z := Responser{"", true, "email not found"}
@@ -485,9 +468,6 @@ func myHandlerLogin(e *mongoDbdatastore) http.Handler {
 
 		} else {
 			if user.Password == password {
-
-				// tmpl := template.Must(template.ParseFiles("menu.html"))
-				// tmpl.Execute(w, nil)
 				http.Redirect(w, r, "/menu", http.StatusSeeOther)
 				uHeight = user.Height
 				uWeight = user.Weight
@@ -613,18 +593,6 @@ func myHandlerSigning(e *mongoDbdatastore) http.Handler {
 
 func main() {
 
-	//db, err := createNewDb(dbHost + ":27017")
-	// config := LoadConfiguration("config.json")
-	// log.Println(config)
-	// stringArray := []string{dbHost}
-	// mongoDBDialInfo := &mgo.DialInfo{
-	// 	Addrs:    stringArray,
-	// 	Database: config.DbName,
-	// 	Username: config.DbUsername,
-	// 	Password: config.DbPassword,
-	// }
-
-//	db, _ := createNewDb(mongoDBDialInfo)
 
 db, _ := createNewDb(dbHost)
 
