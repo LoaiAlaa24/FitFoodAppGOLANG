@@ -30,12 +30,13 @@ var (
 	uGender   string
 	uUsername string
 
-	dbHost     = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
-	dbPort     = envOrDefault("MYAPP_DATABASE_PORT", "27017")
-	webPort    = envOrDefault("MYAPP_WEB_PORT", "8080")
-	dbName     = envOrDefault("dbName", "")
-	dbUsername = envOrDefault("dbUsername", "")
-	dbPassword = envOrDefault("dbPassword", "")
+	dbHost  = envOrDefault("MYAPP_DATABASE_HOST", "localhost")
+	dbPort  = envOrDefault("MYAPP_DATABASE_PORT", "27017")
+	webPort = envOrDefault("MYAPP_WEB_PORT", "8080")
+
+	dbUserName = envOrDefault("MONGO_INITDB_DATABASE", "mongoadmin")
+	//dbUsername = envOrDefault("dbUsername", "")
+	dbPassword = envOrDefault("MONGO_INITDB_ROOT_PASSWORD", "secret")
 )
 
 type mealResponse struct {
@@ -618,7 +619,7 @@ func main() {
 	// }
 
 	//db, _ := createNewDb(mongoDBDialInfo)
-	db.DB(config.DbName).AddUser(config.DbName, config.DbPassword, true)
+	db.DB(config.DbName).AddUser(dbUserName, dbPassword, true)
 	error := db.DB(config.DbName).Login(config.DbName, config.DbPassword)
 
 	if error != nil {
